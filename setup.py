@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from pathlib import Path
 
 setup(
     name='pyphoton',
@@ -6,7 +7,7 @@ setup(
     url='https://github.com/astagi/pyphoton',
     install_requires=["httpx>=0.23.0"],
     description="Photon Python client",
-    long_description=open('README.rst', 'r').read(),
+    long_description=Path('README.rst').read_text(encoding='utf-8'),
     license="MIT",
     author="Andrea Stagi",
     author_email="stagi.andrea@gmail.com",
