@@ -53,7 +53,12 @@ class Photon:
             params.append(('bbox', bbox))
 
         url = f"{self._host}/{endpoint}/"
-        async with httpx.AsyncClient() as client:
+        headers = {
+            'User-Agent': 'pyphoton',
+            'Accept': 'application/json'
+        }
+
+        async with httpx.AsyncClient(headers=headers) as client:
             response = await client.get(url, params=params)
 
         if response.status_code != 200:
