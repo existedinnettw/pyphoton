@@ -10,6 +10,7 @@ venv
 coverage
 htmlcov
 .vscode
+uv.lock
 
 # Settings
 local_settings.py
