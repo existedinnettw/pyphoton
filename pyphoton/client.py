@@ -1,5 +1,5 @@
 import json
-import requests
+import httpx
 
 from .errors import PhotonException
 from .models import Location, Point
@@ -15,7 +15,7 @@ class Photon:
         self._host = host.strip('/')
         self._language = language
 
-    def _execute_query(
+    async def _execute_query(
                 self,
                 endpoint,
                 q=None,
@@ -27,29 +27,41 @@ class Photon:
                 osm_tag=None,
                 bbox=None
     ):
-        params = locals().items()
-        query_parameters = [
-            '{0}={1}'.format(k, v) for k, v in params if v and k not in ('self', 'endpoint', 'osm_tag', 'bbox')
-        ]
+        # build params as list of tuples so duplicate keys like osm_tag are handled
+        params = []
+        items = {
+            'q': q,
+            'limit': limit,
+            'lat': lat,
+            'lon': lon,
+            'lang': lang,
+            'location_bias_scale': location_bias_scale
+        }
+        for k, v in items.items():
+            if v is not None:
+                params.append((k, v))
+
         if osm_tag:
             if not isinstance(osm_tag, (list, set, tuple)):
                 osm_tag = [osm_tag]
             for osm_tag_el in osm_tag:
-                query_parameters.append('osm_tag={0}'.format(osm_tag_el))
+                params.append(('osm_tag', osm_tag_el))
+
         if bbox:
             if isinstance(bbox, (list, set, tuple)):
                 bbox = ','.join(map(str, bbox))
-            query_parameters.append('bbox={0}'.format(bbox))
-        parameters_query = '&'.join(query_parameters)
-        response = requests.get("{0}/{1}/?{2}".format(
-            self._host, endpoint, parameters_query
-        ))
+            params.append(('bbox', bbox))
+
+        url = f"{self._host}/{endpoint}/"
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+
         if response.status_code != 200:
             try:
                 json_response = response.json()
             except json.decoder.JSONDecodeError:
                 json_response = {'message': 'Error ' + str(response.status_code)}
-            raise PhotonException(json_response['message'].capitalize())
+            raise PhotonException(json_response.get('message', 'Error').capitalize())
         return response.json()
 
     def _transform_location(self, location):
@@ -75,7 +87,7 @@ class Photon:
                 setattr(new_location, property_name, property_value)
         return new_location
 
-    def query(
+    async def query(
                 self,
                 query,
                 limit=None,
@@ -88,10 +100,10 @@ class Photon:
     ):
         if not language:
             language = self._language
-        resp = self._execute_query('api', query, limit, latitude, longitude, language, location_bias_scale, osm_tags, bbox)
+        resp = await self._execute_query('api', q=query, limit=limit, lat=latitude, lon=longitude, lang=language, location_bias_scale=location_bias_scale, osm_tag=osm_tags, bbox=bbox)
         return self._transform_locations_from_resp(resp, limit)
 
-    def reverse(
+    async def reverse(
                 self,
                 latitude=None,
                 longitude=None,
@@ -100,7 +112,7 @@ class Photon:
     ):
         if not language:
             language = self._language
-        resp = self._execute_query('reverse', limit=limit, lat=latitude, lon=longitude, lang=language)
+        resp = await self._execute_query('reverse', limit=limit, lat=latitude, lon=longitude, lang=language)
         return self._transform_locations_from_resp(resp, limit)
 
     def _transform_locations_from_resp(self, resp, limit):

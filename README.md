@@ -22,15 +22,19 @@ If you need some code ready to use, [spike.py](https://github.com/astagi/pyphoto
 Python Photon client allows you to make queries to Photon service easily.
 
 ```py
+import asyncio
 from pyphoton import Photon
 
 
-client = Photon()
-location = client.query('berlin', limit=1)
+async def main():
+    client = Photon()
+    location = await client.query('berlin', limit=1)
 
-print (location.city)
-print (location.latitude)
-print (location.longitude)
+    print(location.city)
+    print(location.latitude)
+    print(location.longitude)
+
+asyncio.run(main())
 ```
 
 `Photon` object accepts two parameters:
